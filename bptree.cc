@@ -89,7 +89,19 @@ alloc_leaf(NODE *parent)
 	return node;
 }
 
-void 
+
+NODE* insert_in_parent(NODE *left, int key, NODE *right){
+	if(left == Root){
+		//Create a new root candidate R
+		NODE *newRoot;
+		newRoot = alloc_leaf(NULL);
+		//set R to root and return
+		Root = newRoot;
+		return(newRoot);
+	}
+}
+
+void
 insert(int key, DATA *data)
 {
 	NODE *leaf;
@@ -105,125 +117,67 @@ insert(int key, DATA *data)
 		insert_in_leaf(leaf, key, data);
 	}else {
 		// split
-    	// future work
-
-		//leafはroot nodeじゃなくなった
-		/*leaf ->isLeaf =false;*/
-
 		//copy L to T
 		TEMP *tnode;
-		for(int i=0; i < N ; i++){
+		for(int i=0; i < N-1 ; i++){
 			tnode ->key[i] = leaf ->key[i];
-			tnode->chi[i] = leaf ->chi[i];
-			tnode->isLeaf =leaf ->isLeaf;
-			tnode ->nkey =leaf ->nkey;
+			tnode->chi[i] = leaf ->chi[i];	
 		}
+		tnode->isLeaf =leaf ->isLeaf;
+		tnode ->nkey =leaf ->nkey;
 
 		//insert new key
-		tnode -> key[3] = key;
-		tnode -> chi[3] = (NODE *) data;
+		tnode -> key[N-1] = key;
+		tnode -> chi[N-1] = (NODE *) data;
+		tnode -> nkey ++;
 
-		NODE *leafl;
-		leafl =alloc_leaf(NULL);
-		leafl ->isLeaf =tnode->isLeaf;
+		NODE *leafr;
+		leafr =alloc_leaf(NULL);
+		leafr -> isLeaf =tnode->isLeaf;
 
-		//ptr to T
-		//leafl ->chi[3] = tnode ->chi[4];
-
-		//Set Pn of L’ to Pn of L
+		// Set Pn of L’ to Pn of L
+		//leafr -> chi[N-1] = leaf -> chi[N-1];
 
 		//Set Pn of L to L’
-
-
+		leaf ->chi[N-1] = leafr;
 		
-
 		//clean up L
-		for(int i=0; i<3; i++){
+		leaf ->nkey =0;
+		for(int i=0; i<N; i++){
 			leaf -> key[i] = 0;
 			leaf -> chi[i] = NULL;
-			leaf ->nkey =0;
-			leaf ->isLeaf =true;
+		}
+		
+		//copy from T to L;
+		for(int i=0; i<N/2; i++){
+			leaf ->key[i]= tnode ->key[i];
+			leaf ->chi[i]= tnode ->chi[i];
 		}
 
-		leaf ->chi[4] = leafl;
-		
-
-		//copy from T to L;
-		leaf ->key[0]= tnode ->key[0];
-		leaf ->key[1]= tnode ->key[1];
-		leaf ->chi[0]= tnode ->chi[0];
-		leaf ->chi[1]= tnode ->chi[1];
 
 		//copy from T to L':
-		leafl ->key[0]= tnode ->key[2];
-		leafl ->key[1]= tnode ->key[3];
-		leafl ->chi[0]= tnode ->chi[2];
-		leafl ->chi[1]= (NODE *)data;
-
-		//create a new root candidate R
-		NODE *r;
-		r = alloc_leaf(NULL);
-		r->isLeaf =false;
-
-		//set key
-		r ->key[0] = leafl ->key[0];
-		r ->chi[0] = leaf ->chi[1];
-		r ->chi[1] = leafl ->chi[1];
-
-		leaf ->parent =r;
-		leafl ->parent = r;
-
-
-		Root = r;
-		return;
-
-
-
-
-
-
-
-		/*NODE *leafa, *leafb;
-		leafa = alloc_leaf(leaf);
-		leafb = alloc_leaf(leaf);
-
-		insert_in_leaf(leafa,leaf ->key[0],(DATA *) leaf ->chi[0]);
-		insert_in_leaf(leafa,leaf ->key[1],(DATA *) leaf ->chi[1]);
-		leafa =find_leaf(Root,key);
-		
-		insert_in_leaf(leafb,leaf ->key[2],(DATA *) leaf ->chi[2]);
-
-		leaf -> key[0] =leaf ->key[2];
-		leaf -> key[1] =NULL;
-		leaf -> key[2] =NULL;
-
-		for(int i=0; i<4; i++){
-			leaf ->chi[i] = NULL;
+		for(int i=N/2; i<N; i++){
+			leaf ->key[i-2/N] = tnode ->key[i];
+			leaf ->chi[i-2/N] = tnode ->chi[i];
 		}
-		
-		leafa -> chi[3] = leafb;
 
-		leaf ->chi[0] =leafa;
-		leaf ->chi[1] =leafb;*/
+		//printf("%d", leaf -> key[3]);
 
+		//insert_in_parent
+		NODE *newroot;
+		newroot = insert_in_parent(leaf, leafr -> key[0], leafr);
 
+		//set Key
+		newroot ->isLeaf =false;
+		newroot -> chi[0] = leaf;
+		newroot -> chi[1] = leafr;
+		newroot -> key[0] = key;
+		newroot -> nkey = 1;
 
+		leaf -> parent =newroot;
+		leafr -> parent = newroot;
 
-		
-
-
-		/*leafa -> key[0] = leaf -> key[0];
-		leafa -> key[1] = leaf -> key[1];
-
-		leafb -> key[0] = leaf -> key[2];
-		leafb -> key[1] = key;
-
-		
-*/
-
-
-		
-	
+		return;	
 	}
 }
 
