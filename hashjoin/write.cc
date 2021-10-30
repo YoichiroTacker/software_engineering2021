@@ -31,6 +31,7 @@ writeToStorage(const int max)
   close(fd);
 }
 
+//追加で書いた部分
 void 
 readFromstorage(void){
   int fd;
