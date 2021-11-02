@@ -90,15 +90,95 @@ alloc_leaf(NODE *parent)
 }
 
 
-NODE* insert_in_parent(NODE *left, int key, NODE *right){
+void insert_in_parent(NODE *left, int key, NODE *right){
 	if(left == Root){
 		//Create a new root candidate R
 		NODE *newRoot;
 		newRoot = alloc_leaf(NULL);
+		newRoot -> isLeaf = false;
+
+		newRoot->chi[0] = left;
+		newRoot->chi[1] = right;
+		newRoot->key[0] = key;
+		newRoot->nkey++;
+		right -> parent = newRoot;
+		left -> parent = newRoot;
 		//set R to root and return
 		Root = newRoot;
-		return(newRoot);
+		return;
 	}
+}
+
+TEMP* createtemp(NODE *leaf){
+	//temoporary nodeの作成・leafからコピー
+	TEMP *tnode;
+	if (!(tnode = (TEMP * )calloc(1, sizeof(TEMP))))
+		ERR;
+	for(int i=0; i < N-1; i++){
+		tnode ->key[i] = leaf ->key[i];
+		tnode->chi[i] = leaf ->chi[i];
+	}
+	tnode->isLeaf =leaf -> isLeaf;
+	tnode ->nkey =leaf -> nkey;
+	return(tnode);
+}
+
+void split(int key, DATA *data,TEMP *tnode, NODE *leaf){
+	//もしkeyが一番小さい側から入る場合、temp nodeを一つずつ右に寄せる
+		if(key <= tnode -> key[0]){
+			for(int i=N-1; i>0; i--){
+				tnode -> key[i] = tnode ->key[i-1];
+				tnode -> chi[i] = tnode ->chi[i-1];
+			}
+		}
+
+		//insert new key
+		if(key >=tnode ->key[N-2]){
+			tnode -> key[N-1] = key;
+			tnode -> chi[N-1] = (NODE *) data;
+			tnode -> nkey ++;
+		}else{
+			tnode -> key[0] =key;
+			tnode -> chi[0] = (NODE *) data;
+			tnode -> nkey++;
+		}
+		
+
+		//新しいnodeの生成
+		NODE *new_leaf;
+		if (!(new_leaf = (NODE * )calloc(1, sizeof(NODE))))
+			ERR;
+		new_leaf -> isLeaf = tnode->isLeaf;
+		new_leaf -> parent = leaf -> parent;
+
+		//clean up leaf
+		leaf ->nkey =0;
+		for(int i=0; i<N; i++){
+			leaf -> key[i] = 0;
+			leaf -> chi[i] = NULL;
+		}
+		
+		//copy from tnode to leaf;
+		for(int i=0; i<N/2; i++){
+			leaf ->key[i]= tnode ->key[i];
+			leaf ->chi[i]= tnode ->chi[i];
+			leaf ->nkey ++;
+		}
+
+		//copy from tnode to new_leaf:
+		for(int i=N/2; i<N; i++){
+			new_leaf ->key[i - N/2] = tnode ->key[i];
+			new_leaf ->chi[i - N/2] = tnode ->chi[i];
+			new_leaf ->nkey ++;
+		}
+
+		leaf -> chi[N-1] = new_leaf;
+
+		free(tnode);
+
+		//insert_in_parent
+		insert_in_parent(leaf, new_leaf -> key[0], new_leaf);
+		return;	
 }
 
 void
@@ -116,69 +196,13 @@ insert(int key, DATA *data)
 	if (leaf->nkey < (N-1)) {
 		insert_in_leaf(leaf, key, data);
 	}else {
-		// split
-		//copy L to T
+		//temoporary nodeの作成
 		TEMP *tnode;
-		for(int i=0; i < N-1 ; i++){
-			tnode ->key[i] = leaf ->key[i];
-			tnode->chi[i] = leaf ->chi[i];	
+		tnode = createtemp(leaf);
+
+		//split
+		split(key, data, tnode, leaf);		
 		}
-		tnode->isLeaf =leaf ->isLeaf;
-		tnode ->nkey =leaf ->nkey;
-
-		//insert new key
-		tnode -> key[N-1] = key;
-		tnode -> chi[N-1] = (NODE *) data;
-		tnode -> nkey ++;
-
-		NODE *leafr;
-		leafr =alloc_leaf(NULL);
-		leafr -> isLeaf =tnode->isLeaf;
-
-		// Set Pn of L’ to Pn of L
-		//leafr -> chi[N-1] = leaf -> chi[N-1];
-
-		//Set Pn of L to L’
-		leaf ->chi[N-1] = leafr;
-		
-		//clean up L
-		leaf ->nkey =0;
-		for(int i=0; i<N; i++){
-			leaf -> key[i] = 0;
-			leaf -> chi[i] = NULL;
-		}
-		
-		//copy from T to L;
-		for(int i=0; i<N/2; i++){
-			leaf ->key[i]= tnode ->key[i];
-			leaf ->chi[i]= tnode ->chi[i];
-		}
-
-
-		//copy from T to L':
-		for(int i=N/2; i<N; i++){
-			leaf ->key[i-2/N] = tnode ->key[i];
-			leaf ->chi[i-2/N] = tnode ->chi[i];
-		}
-
-		//printf("%d", leaf -> key[3]);
-
-		//insert_in_parent
-		NODE *newroot;
-		newroot = insert_in_parent(leaf, leafr -> key[0], leafr);
-
-		//set Key
-		newroot ->isLeaf =false;
-		newroot -> chi[0] = leaf;
-		newroot -> chi[1] = leafr;
-		newroot -> key[0] = key;
-		newroot -> nkey = 1;
-
-		leaf -> parent =newroot;
-		leafr -> parent = newroot;
-
-		return;	
-	}
 }
 
 void
@@ -215,3 +239,4 @@ main(int argc, char *argv[])
 
 	return 0;
 }
+
