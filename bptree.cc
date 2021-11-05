@@ -131,7 +131,7 @@ void insert_in_parent(NODE *left, int key, NODE *right)
 				Root->nkey++;
 				Root->chi[0] = left;
 				Root->chi[1] = right;
-			} //それ以外
+			} //それ以外の場合
 			else
 			{
 				for (i = N - 2; i >= 0; i--)
@@ -205,20 +205,6 @@ void split(int key, DATA *data, TEMP *tnode, NODE *leaf)
 		tnode->chi[i] = (NODE *)data;
 		tnode->nkey++;
 	}
-
-	// insert new key
-	/*if (key >= tnode->key[N - 2])
-	{
-		tnode->key[N - 1] = key;
-		tnode->chi[N - 1] = (NODE *)data;
-		tnode->nkey++;
-	}
-	else
-	{
-		tnode->key[0] = key;
-		tnode->chi[0] = (NODE *)data;
-		tnode->nkey++;
-	}*/
 
 	//新しいnodeの生成
 	NODE *new_leaf;
