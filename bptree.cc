@@ -33,8 +33,7 @@ void print_tree(NODE *node)
 	fflush(stdout);
 }
 
-NODE *
-find_leaf(NODE *node, int key)
+NODE *find_leaf(NODE *node, int key)
 {
 	int kid;
 
@@ -49,8 +48,7 @@ find_leaf(NODE *node, int key)
 	return find_leaf(node->chi[kid], key);
 }
 
-NODE *
-insert_in_leaf(NODE *leaf, int key, DATA *data)
+NODE *insert_in_leaf(NODE *leaf, int key, DATA *data)
 {
 	int i;
 	if (key < leaf->key[0])
@@ -76,21 +74,14 @@ insert_in_leaf(NODE *leaf, int key, DATA *data)
 			leaf->key[j] = leaf->key[j - 1];
 		}
 		/* CodeQuiz*/
-		while (leaf->key[i] != 0)
-		{
-			i++;
-		}
 		leaf->key[i] = key;
 		leaf->chi[i] = (NODE *)data;
 	}
-
 	leaf->nkey++;
-
 	return leaf;
 }
 
-NODE *
-alloc_leaf(NODE *parent)
+NODE *alloc_leaf(NODE *parent)
 {
 	NODE *node;
 	if (!(node = (NODE *)calloc(1, sizeof(NODE))))
@@ -104,6 +95,7 @@ alloc_leaf(NODE *parent)
 
 void insert_in_parent(NODE *left, int key, NODE *right)
 {
+	int i, j, k;
 	if (left == Root)
 	{
 		// Create a new root candidate R
@@ -121,14 +113,53 @@ void insert_in_parent(NODE *left, int key, NODE *right)
 		Root = newRoot;
 		return;
 	}
+	else
+	{
+		// split(2回目以降)
+		if (Root->nkey < N - 1)
+		{
+
+			// keyが一番小さい場合
+			if (key < Root->key[0])
+			{
+				for (i = N - 1; i > 0; i--)
+				{
+					Root->key[i - 1] = Root->key[i - 2];
+					Root->chi[i] = Root->chi[i - 1];
+				}
+				Root->key[0] = key;
+				Root->nkey++;
+				Root->chi[0] = left;
+				Root->chi[1] = right;
+			} //それ以外
+			else
+			{
+				for (i = N - 2; i >= 0; i--)
+				{
+					if (Root->key[i] != 0 && key > Root->key[i])
+					{
+						break;
+					}
+				}
+				for (j = N - 2; j > i + 1; j--)
+				{
+					Root->chi[j] = Root->chi[j - 1];
+					Root->key[j] = Root->key[j - 1];
+				}
+				Root->key[i + 1] = key;
+				Root->nkey++;
+				Root->chi[i + 1] = left;
+				Root->chi[i + 2] = right;
+			}
+		}
+	}
 }
 
 TEMP *createtemp(NODE *leaf)
 {
 	// temoporary nodeの作成・leafからコピー
 	TEMP *tnode;
-	if (!(tnode = (TEMP *)calloc(1, sizeof(TEMP))))
-		ERR;
+	tnode = (TEMP *)calloc(1, sizeof(TEMP));
 	for (int i = 0; i < N - 1; i++)
 	{
 		tnode->key[i] = leaf->key[i];
@@ -141,18 +172,42 @@ TEMP *createtemp(NODE *leaf)
 
 void split(int key, DATA *data, TEMP *tnode, NODE *leaf)
 {
-	//もしkeyが一番小さい側から入る場合、temp nodeを一つずつ右に寄せる
-	if (key <= tnode->key[0])
+
+	int i, j, k;
+	//もしkeyが一番左に挿入される場合、temp nodeを一つずつ右に寄せる
+	if (key < tnode->key[0])
 	{
 		for (int i = N - 1; i > 0; i--)
 		{
 			tnode->key[i] = tnode->key[i - 1];
 			tnode->chi[i] = tnode->chi[i - 1];
 		}
+		tnode->key[0] = key;
+		tnode->chi[0] = (NODE *)data;
+		tnode->nkey++;
+	}
+	else
+	//それ以外の場合(keyがtnodeの真ん中か一番右に挿入される場合、挿入よりも右の領域を一つずつ右に寄せる)
+	{
+		for (i = 0; i < N; i++)
+		{
+			if (key < tnode->key[i] || tnode->key[i] == 0)
+			{
+				break;
+			}
+		}
+		for (j = N; j > i; j--)
+		{
+			tnode->key[j] = tnode->key[j - 1];
+			tnode->chi[j] = tnode->chi[j - 1];
+		}
+		tnode->key[i] = key;
+		tnode->chi[i] = (NODE *)data;
+		tnode->nkey++;
 	}
 
 	// insert new key
-	if (key >= tnode->key[N - 2])
+	/*if (key >= tnode->key[N - 2])
 	{
 		tnode->key[N - 1] = key;
 		tnode->chi[N - 1] = (NODE *)data;
@@ -163,7 +218,7 @@ void split(int key, DATA *data, TEMP *tnode, NODE *leaf)
 		tnode->key[0] = key;
 		tnode->chi[0] = (NODE *)data;
 		tnode->nkey++;
-	}
+	}*/
 
 	//新しいnodeの生成
 	NODE *new_leaf;
@@ -177,7 +232,7 @@ void split(int key, DATA *data, TEMP *tnode, NODE *leaf)
 	for (int i = 0; i < N; i++)
 	{
 		leaf->key[i] = 0;
-		leaf->chi[i] = NULL;
+		leaf->chi[i] = 0;
 	}
 
 	// copy from tnode to leaf;
@@ -196,12 +251,21 @@ void split(int key, DATA *data, TEMP *tnode, NODE *leaf)
 		new_leaf->nkey++;
 	}
 
+	new_leaf->chi[N - 1] = leaf->chi[N - 1];
 	leaf->chi[N - 1] = new_leaf;
 
 	free(tnode);
 
 	// insert_in_parent
-	insert_in_parent(leaf, new_leaf->key[0], new_leaf);
+	if (leaf->key[0] < new_leaf->key[0])
+	{
+		insert_in_parent(leaf, new_leaf->key[0], new_leaf);
+	}
+	else
+	{
+		insert_in_parent(new_leaf, leaf->key[0], leaf);
+	}
+
 	return;
 }
 
