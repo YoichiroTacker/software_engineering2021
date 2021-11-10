@@ -118,7 +118,6 @@ void insert_in_parent(NODE *left, int key, NODE *right)
 		// split(2回目以降)
 		if (Root->nkey < N - 1)
 		{
-
 			// keyが一番小さい場合
 			if (key < Root->key[0])
 			{
@@ -151,6 +150,21 @@ void insert_in_parent(NODE *left, int key, NODE *right)
 				Root->chi[i + 1] = left;
 				Root->chi[i + 2] = right;
 			}
+		}
+		else
+		{
+			NODE *splitRoot;
+			splitRoot = alloc_leaf(NULL);
+			splitRoot->isLeaf = false;
+
+			splitRoot->chi[0] = Root->chi[N - 1];
+			splitRoot->chi[1] = right;
+			splitRoot->key[0] = key;
+			splitRoot->nkey++;
+			right->parent = splitRoot;
+			left->parent = splitRoot;
+
+			// Root->chi[N - 1] = splitRoot;
 		}
 	}
 }
