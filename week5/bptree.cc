@@ -93,66 +93,78 @@ NODE *alloc_leaf(NODE *parent)
 	return node;
 }
 
+void create_firstRoot(NODE *left, int key, NODE *right)
+{
+	// Create a new root candidate R
+	NODE *newRoot;
+	newRoot = alloc_leaf(NULL);
+	newRoot->isLeaf = false;
+
+	newRoot->chi[0] = left;
+	newRoot->chi[1] = right;
+	newRoot->key[0] = key;
+	newRoot->nkey++;
+	right->parent = newRoot;
+	left->parent = newRoot;
+	// set R to root and return
+	Root = newRoot;
+	return;
+}
+
+int slide_element_in_Root(NODE *Root, int key, NODE *left, NODE *right)
+{
+	int i, j;
+	// keyが一番小さい場合
+	if (key < Root->key[0])
+	{
+		for (i = N - 1; i > 0; i--)
+		{
+			Root->key[i - 1] = Root->key[i - 2];
+			Root->chi[i] = Root->chi[i - 1];
+		}
+		return i = -1;
+	} //それ以外の場合
+	else
+	{
+		for (i = N - 2; i >= 0; i--)
+		{
+			if (Root->key[i] != 0 && key > Root->key[i])
+			{
+				break;
+			}
+		}
+		for (j = N - 2; j > i + 1; j--)
+		{
+			Root->chi[j] = Root->chi[j - 1];
+			Root->key[j] = Root->key[j - 1];
+		}
+		return i;
+	}
+}
+
 void insert_in_parent(NODE *left, int key, NODE *right)
 {
-	int i, j, k;
+	int i;
 	if (left == Root)
 	{
-		// Create a new root candidate R
-		NODE *newRoot;
-		newRoot = alloc_leaf(NULL);
-		newRoot->isLeaf = false;
-
-		newRoot->chi[0] = left;
-		newRoot->chi[1] = right;
-		newRoot->key[0] = key;
-		newRoot->nkey++;
-		right->parent = newRoot;
-		left->parent = newRoot;
-		// set R to root and return
-		Root = newRoot;
-		return;
+		// split(1回目)
+		create_firstRoot(left, key, right);
 	}
 	else
 	{
 		// split(2回目以降)
 		if (Root->nkey < N - 1)
 		{
-			// keyが一番小さい場合
-			if (key < Root->key[0])
-			{
-				for (i = N - 1; i > 0; i--)
-				{
-					Root->key[i - 1] = Root->key[i - 2];
-					Root->chi[i] = Root->chi[i - 1];
-				}
-				Root->key[0] = key;
-				Root->nkey++;
-				Root->chi[0] = left;
-				Root->chi[1] = right;
-			} //それ以外の場合
-			else
-			{
-				for (i = N - 2; i >= 0; i--)
-				{
-					if (Root->key[i] != 0 && key > Root->key[i])
-					{
-						break;
-					}
-				}
-				for (j = N - 2; j > i + 1; j--)
-				{
-					Root->chi[j] = Root->chi[j - 1];
-					Root->key[j] = Root->key[j - 1];
-				}
-				Root->key[i + 1] = key;
-				Root->nkey++;
-				Root->chi[i + 1] = left;
-				Root->chi[i + 2] = right;
-			}
+			i = slide_element_in_Root(Root, key, left, right);
+
+			// slideした場所にkeyを代入
+			Root->key[i + 1] = key;
+			Root->nkey++;
+			Root->chi[i + 1] = left;
+			Root->chi[i + 2] = right;
 		}
-		else
-		{
+		/*else
+		{ //internal split
 			NODE *splitRoot;
 			splitRoot = alloc_leaf(NULL);
 			splitRoot->isLeaf = false;
@@ -165,7 +177,7 @@ void insert_in_parent(NODE *left, int key, NODE *right)
 			left->parent = splitRoot;
 
 			// Root->chi[N - 1] = splitRoot;
-		}
+		}*/
 	}
 }
 
@@ -184,10 +196,9 @@ TEMP *createtemp(NODE *leaf)
 	return (tnode);
 }
 
-void split(int key, DATA *data, TEMP *tnode, NODE *leaf)
+int slide_element_in_tempnode(TEMP *tnode, int key)
 {
-
-	int i, j, k;
+	int i, j;
 	//もしkeyが一番左に挿入される場合、temp nodeを一つずつ右に寄せる
 	if (key < tnode->key[0])
 	{
@@ -196,9 +207,7 @@ void split(int key, DATA *data, TEMP *tnode, NODE *leaf)
 			tnode->key[i] = tnode->key[i - 1];
 			tnode->chi[i] = tnode->chi[i - 1];
 		}
-		tnode->key[0] = key;
-		tnode->chi[0] = (NODE *)data;
-		tnode->nkey++;
+		return i = 0;
 	}
 	else
 	//それ以外の場合(keyがtnodeの真ん中か一番右に挿入される場合、挿入よりも右の領域を一つずつ右に寄せる)
@@ -215,17 +224,24 @@ void split(int key, DATA *data, TEMP *tnode, NODE *leaf)
 			tnode->key[j] = tnode->key[j - 1];
 			tnode->chi[j] = tnode->chi[j - 1];
 		}
-		tnode->key[i] = key;
-		tnode->chi[i] = (NODE *)data;
-		tnode->nkey++;
+		return i;
 	}
+}
+
+void split(int key, DATA *data, TEMP *tnode, NODE *leaf)
+{
+	int i;
+	i = slide_element_in_tempnode(tnode, key);
+
+	// slideした場所にkey・dataを代入
+	tnode->key[i] = key;
+	tnode->chi[i] = (NODE *)data;
+	tnode->nkey++;
 
 	//新しいnodeの生成
 	NODE *new_leaf;
-	if (!(new_leaf = (NODE *)calloc(1, sizeof(NODE))))
-		ERR;
-	new_leaf->isLeaf = tnode->isLeaf;
-	new_leaf->parent = leaf->parent;
+	new_leaf = alloc_leaf(leaf->parent);
+	// new_leaf->isLeaf = tnode->isLeaf;
 
 	// clean up leaf
 	leaf->nkey = 0;
@@ -251,22 +267,14 @@ void split(int key, DATA *data, TEMP *tnode, NODE *leaf)
 		new_leaf->nkey++;
 	}
 
+	//ポインタの付け替え
 	new_leaf->chi[N - 1] = leaf->chi[N - 1];
 	leaf->chi[N - 1] = new_leaf;
 
 	free(tnode);
 
 	// insert_in_parent
-	if (leaf->key[0] < new_leaf->key[0])
-	{
-		insert_in_parent(leaf, new_leaf->key[0], new_leaf);
-	}
-	else
-	{
-		insert_in_parent(new_leaf, leaf->key[0], leaf);
-	}
-
-	return;
+	insert_in_parent(leaf, new_leaf->key[0], new_leaf);
 }
 
 void insert(int key, DATA *data)
