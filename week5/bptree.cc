@@ -2,6 +2,21 @@
 #include <vector>
 #include <sys/time.h>
 
+//プロトタイプ宣言
+void print_tree_core(NODE);
+void print_tree(NODE);
+NODE *find_leaf(NODE, int);
+NODE *insert_in_leaf(NODE, int, DATA);
+NODE *alloc_leaf(NODE);
+void create_firstRoot(NODE, int, NODE);
+int slide_element_in_Root(NODE, int, NODE, NODE);
+void insert_in_parent(NODE, int, NODE);
+TEMP *createtemp(NODE);
+int slide_element_in_tempnode(TEMP, int);
+void split(int, DATA, TEMP, NODE);
+void insert(int, DATA);
+void init_root(void);
+
 struct timeval
 cur_time(void)
 {
