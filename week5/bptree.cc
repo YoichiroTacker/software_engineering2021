@@ -3,19 +3,22 @@
 #include <sys/time.h>
 
 //プロトタイプ宣言
-void print_tree_core(NODE);
-void print_tree(NODE);
-NODE *find_leaf(NODE, int);
-NODE *insert_in_leaf(NODE, int, DATA);
-NODE *alloc_leaf(NODE);
-void create_firstRoot(NODE, int, NODE);
-int slide_element_in_Root(NODE, int, NODE, NODE);
-void insert_in_parent(NODE, int, NODE);
-TEMP *createtemp(NODE);
-int slide_element_in_tempnode(TEMP, int);
-void split(int, DATA, TEMP, NODE);
-void insert(int, DATA);
+void print_tree_core(NODE *n);
+void print_tree(NODE *node);
+NODE *find_leaf(NODE *node, int key);
+NODE *insert_in_leaf(NODE *leaf, int key, DATA *data);
+NODE *alloc_leaf(NODE *parent);
+void create_firstRoot(NODE *left, int key, NODE *right);
+int slide_element_in_Root(NODE *Root, int key, NODE *left, NODE *right);
+TEMP *createtemp(NODE *leaf);
+int slide_element_in_tempnode(TEMP *tnode, int key);
+void internal_split(TEMP *tnode, NODE *left);
+void insert_in_parent(NODE *left, int key, NODE *right);
+void split(int key, DATA *data, TEMP *tnode, NODE *leaf);
+void insert(int key, DATA *data);
 void init_root(void);
+int interactive();
+int main(int argc, char *argv[]);
 
 struct timeval
 cur_time(void)
@@ -157,45 +160,6 @@ int slide_element_in_Root(NODE *Root, int key, NODE *left, NODE *right)
 	}
 }
 
-void insert_in_parent(NODE *left, int key, NODE *right)
-{
-	int i;
-	if (left == Root)
-	{
-		// split(1回目)
-		create_firstRoot(left, key, right);
-	}
-	else
-	{
-		// split(2回目以降)
-		if (Root->nkey < N - 1)
-		{
-			i = slide_element_in_Root(Root, key, left, right);
-
-			// slideした場所にkeyを代入
-			Root->key[i + 1] = key;
-			Root->nkey++;
-			Root->chi[i + 1] = left;
-			Root->chi[i + 2] = right;
-		}
-		/*else
-		{ //internal split
-			NODE *splitRoot;
-			splitRoot = alloc_leaf(NULL);
-			splitRoot->isLeaf = false;
-
-			splitRoot->chi[0] = Root->chi[N - 1];
-			splitRoot->chi[1] = right;
-			splitRoot->key[0] = key;
-			splitRoot->nkey++;
-			right->parent = splitRoot;
-			left->parent = splitRoot;
-
-			// Root->chi[N - 1] = splitRoot;
-		}*/
-	}
-}
-
 TEMP *createtemp(NODE *leaf)
 {
 	// temoporary nodeの作成・leafからコピー
@@ -243,6 +207,87 @@ int slide_element_in_tempnode(TEMP *tnode, int key)
 	}
 }
 
+void internal_split(TEMP *tnode, NODE *left)
+{
+	NODE *right;
+	right = alloc_leaf(NULL);
+	right->isLeaf = false;
+
+	// clean up leaf
+	left->nkey = 0;
+	for (int i = 0; i < N; i++)
+	{
+		left->key[i] = 0;
+		left->chi[i] = 0;
+	}
+
+	// copy from tnode to left
+	for (int i = 0; i < N / 2; i++)
+	{
+		left->key[i] = tnode->key[i];
+		left->nkey++;
+	}
+
+	for (int i = 0; i < N / 2 + 1; i++)
+	{
+		left->chi[i] = tnode->chi[i];
+	}
+
+	// copy from tnode to right
+	right->key[0] = tnode->key[3];
+	right->chi[0] = tnode->chi[3];
+	right->chi[1] = tnode->chi[4];
+	right->nkey++;
+
+	// left->isLeaf = false;
+	// right->isLeaf = false;
+
+	// insert_in_parent
+	insert_in_parent(left, tnode->key[2], right);
+
+	free(tnode);
+}
+
+void insert_in_parent(NODE *left, int key, NODE *right)
+{
+	int i;
+	if (left == Root)
+	{
+		// split(1回目)
+		create_firstRoot(left, key, right);
+	}
+	else
+	{
+		// split(2回目以降)
+		if (Root->nkey < N - 1)
+		{
+			i = slide_element_in_Root(Root, key, left, right);
+
+			// slideした場所にkeyを代入
+			Root->key[i + 1] = key;
+			Root->nkey++;
+			Root->chi[i + 1] = left;
+			Root->chi[i + 2] = right;
+		}
+		else
+		{ // internal split(Root nodeの中身が全部埋まっている時)
+			TEMP *tnode;
+			tnode = createtemp(Root);
+
+			int i;
+			i = slide_element_in_tempnode(tnode, key);
+
+			// slideした場所にkeyを代入
+			tnode->key[i] = key;
+			tnode->chi[i] = left;
+			tnode->chi[i + 1] = right;
+			tnode->nkey++;
+
+			internal_split(tnode, Root);
+		}
+	}
+}
+
 void split(int key, DATA *data, TEMP *tnode, NODE *leaf)
 {
 	int i;
@@ -256,7 +301,7 @@ void split(int key, DATA *data, TEMP *tnode, NODE *leaf)
 	//新しいnodeの生成
 	NODE *new_leaf;
 	new_leaf = alloc_leaf(leaf->parent);
-	// new_leaf->isLeaf = tnode->isLeaf;
+	// new_leaf->isLeaf = true;
 
 	// clean up leaf
 	leaf->nkey = 0;
