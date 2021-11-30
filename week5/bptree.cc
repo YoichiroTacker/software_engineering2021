@@ -9,7 +9,7 @@ NODE *find_leaf(NODE *node, int key);
 NODE *insert_in_leaf(NODE *leaf, int key, DATA *data);
 NODE *alloc_leaf(NODE *parent);
 void create_firstRoot(NODE *left, int key, NODE *right);
-int slide_element_in_Root(NODE *Root, int key, NODE *left, NODE *right);
+int slide_element_in_node(NODE *node, int key, NODE *left, NODE *right);
 TEMP *createtemp(NODE *leaf);
 int slide_element_in_tempnode(TEMP *tnode, int key);
 void internal_split(TEMP *tnode, NODE *left);
@@ -129,32 +129,32 @@ void create_firstRoot(NODE *left, int key, NODE *right)
 	return;
 }
 
-int slide_element_in_Root(NODE *Root, int key, NODE *left, NODE *right)
+int slide_element_in_node(NODE *node, int key, NODE *left, NODE *right)
 {
 	int i, j;
 	// keyが一番小さい場合
-	if (key < Root->key[0])
+	if (key < node->key[0])
 	{
 		for (i = N - 1; i > 0; i--)
 		{
-			Root->key[i - 1] = Root->key[i - 2];
-			Root->chi[i] = Root->chi[i - 1];
+			node->key[i - 1] = node->key[i - 2];
+			node->chi[i] = node->chi[i - 1];
 		}
-		return i = -1;
+		return i = 0;
 	} //それ以外の場合
 	else
 	{
-		for (i = N - 2; i >= 0; i--)
+		for (i = 0; i < N; i++)
 		{
-			if (Root->key[i] != 0 && key > Root->key[i])
+			if (node->key[i] == 0 || key < node->key[i])
 			{
 				break;
 			}
 		}
-		for (j = N - 2; j > i + 1; j--)
+		for (j = N - 1; j > i; j--)
 		{
-			Root->chi[j] = Root->chi[j - 1];
-			Root->key[j] = Root->key[j - 1];
+			node->chi[j] = node->chi[j - 1];
+			node->key[j - 1] = node->key[j - 2];
 		}
 		return i;
 	}
@@ -211,7 +211,8 @@ void internal_split(TEMP *tnode, NODE *left)
 {
 	NODE *right;
 	right = alloc_leaf(NULL);
-	right->isLeaf = false;
+	right->isLeaf = left->isLeaf;
+	right->parent = left->parent;
 
 	// clean up leaf
 	left->nkey = 0;
@@ -239,13 +240,15 @@ void internal_split(TEMP *tnode, NODE *left)
 	right->chi[1] = tnode->chi[4];
 	right->nkey++;
 
-	// left->isLeaf = false;
-	// right->isLeaf = false;
+	// parentが変わるnodeたちのparentを修正(これだけに1時間かかってる)
+	right->chi[0]->parent = right;
+	right->chi[1]->parent = right;
 
 	// insert_in_parent
-	insert_in_parent(left, tnode->key[2], right);
+	insert_in_parent(left, tnode->key[N / 2], right);
 
 	free(tnode);
+	return;
 }
 
 void insert_in_parent(NODE *left, int key, NODE *right)
@@ -258,21 +261,25 @@ void insert_in_parent(NODE *left, int key, NODE *right)
 	}
 	else
 	{
+		NODE *parent = left->parent;
 		// split(2回目以降)
-		if (Root->nkey < N - 1)
+		if (parent->nkey < N - 1)
 		{
-			i = slide_element_in_Root(Root, key, left, right);
+			i = slide_element_in_node(parent, key, left, right);
 
 			// slideした場所にkeyを代入
-			Root->key[i + 1] = key;
-			Root->nkey++;
-			Root->chi[i + 1] = left;
-			Root->chi[i + 2] = right;
+			parent->key[i] = key;
+			parent->nkey++;
+			parent->chi[i] = left;
+			parent->chi[i + 1] = right;
 		}
 		else
 		{ // internal split(Root nodeの中身が全部埋まっている時)
 			TEMP *tnode;
-			tnode = createtemp(Root);
+			tnode = createtemp(parent);
+
+			//　この1行にも1時間かかった 　//　この行は少し汚い
+			tnode->chi[N - 1] = parent->chi[N - 1];
 
 			int i;
 			i = slide_element_in_tempnode(tnode, key);
@@ -283,7 +290,7 @@ void insert_in_parent(NODE *left, int key, NODE *right)
 			tnode->chi[i + 1] = right;
 			tnode->nkey++;
 
-			internal_split(tnode, Root);
+			internal_split(tnode, parent);
 		}
 	}
 }
@@ -293,15 +300,15 @@ void split(int key, DATA *data, TEMP *tnode, NODE *leaf)
 	int i;
 	i = slide_element_in_tempnode(tnode, key);
 
-	// slideした場所にkey・dataを代入
+	// slideした場所にkeyを代入
 	tnode->key[i] = key;
-	tnode->chi[i] = (NODE *)data;
 	tnode->nkey++;
 
 	//新しいnodeの生成
 	NODE *new_leaf;
-	new_leaf = alloc_leaf(leaf->parent);
-	// new_leaf->isLeaf = true;
+	new_leaf = alloc_leaf(NULL);
+	new_leaf->isLeaf = true;
+	new_leaf->parent = leaf->parent;
 
 	// clean up leaf
 	leaf->nkey = 0;
@@ -328,7 +335,7 @@ void split(int key, DATA *data, TEMP *tnode, NODE *leaf)
 	}
 
 	//ポインタの付け替え
-	new_leaf->chi[N - 1] = leaf->chi[N - 1];
+	new_leaf->chi[N - 1] = tnode->chi[N];
 	leaf->chi[N - 1] = new_leaf;
 
 	free(tnode);
@@ -392,6 +399,7 @@ int main(int argc, char *argv[])
 	while (true)
 	{
 		insert(interactive(), NULL);
+
 		print_tree(Root);
 	}
 	end = cur_time();
