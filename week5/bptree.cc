@@ -20,6 +20,9 @@ void init_root(void);
 int interactive();
 int main(int argc, char *argv[]);
 
+#define SIZE 1000 * 1000
+int data_array[SIZE];
+
 struct timeval
 cur_time(void)
 {
@@ -146,8 +149,14 @@ int slide_element_in_node(NODE *node, int key, NODE *left, NODE *right)
 	{
 		for (i = 0; i < N; i++)
 		{
-			if (node->key[i] == 0 || key < node->key[i])
+			if (key < node->key[i])
 			{
+				break;
+			}
+			// 0がそもそもダメな仕様になっていた。0がkeyでも大丈夫なように修正
+			if (node->key[i] > node->key[i + 1])
+			{
+				i++;
 				break;
 			}
 		}
@@ -181,7 +190,7 @@ int slide_element_in_tempnode(TEMP *tnode, int key)
 	//もしkeyが一番左に挿入される場合、temp nodeを一つずつ右に寄せる
 	if (key < tnode->key[0])
 	{
-		for (int i = N - 1; i > 0; i--)
+		for (int i = N; i > 0; i--)
 		{
 			tnode->key[i] = tnode->key[i - 1];
 			tnode->chi[i] = tnode->chi[i - 1];
@@ -193,8 +202,14 @@ int slide_element_in_tempnode(TEMP *tnode, int key)
 	{
 		for (i = 0; i < N; i++)
 		{
-			if (key < tnode->key[i] || tnode->key[i] == 0)
+			if (key < tnode->key[i])
 			{
+				break;
+			}
+			// 0がそもそもダメな仕様になっていた。0がkeyでも大丈夫なように修正
+			if (tnode->key[i] > tnode->key[i + 1])
+			{
+				i++;
 				break;
 			}
 		}
@@ -361,6 +376,8 @@ void insert(int key, DATA *data)
 	if (leaf->nkey < (N - 1))
 	{
 		insert_in_leaf(leaf, key, data);
+		// printf("[%d]", leaf->nkey);
+		// DDD(leaf->nkey);
 	}
 	else
 	{
@@ -388,6 +405,38 @@ int interactive()
 	return key;
 }
 
+void search(int key)
+{
+	// printf("[%d]", key);
+	NODE *node;
+	node = find_leaf(Root, key);
+	// printf("{%d}", node->nkey);
+	for (int i = 0; i < node->nkey; i++)
+	{
+		if (node->key[i] == key)
+		{
+			return;
+		}
+	}
+	printf("%d", key);
+	ERR;
+}
+
+void arraygenerate()
+{
+	srand((unsigned int)time(NULL));
+	for (int i = 0; i < SIZE; i++)
+	{
+		data_array[i] = rand();
+	}
+
+	//配列の中身確認用
+	/*for (i = 0; i < SIZE; ++i)
+	{
+		printf("%d\n", array[i]);
+	}*/
+}
+
 int main(int argc, char *argv[])
 {
 	struct timeval begin, end;
@@ -396,13 +445,48 @@ int main(int argc, char *argv[])
 
 	printf("-----Insert-----\n");
 	begin = cur_time();
-	while (true)
+
+	//入力順にinsert
+	/*while (true)
 	{
 		insert(interactive(), NULL);
-
 		print_tree(Root);
-	}
-	end = cur_time();
+	}*/
 
+	//昇順にinsert
+	/*for (int i = 0; i < SIZE; i++)
+	{
+		insert(i, NULL);
+		// print_tree(Root);
+	}*/
+
+	//降順にinsert
+	/*for (int i = SIZE - 1; i >= 0; i--)
+	{
+		insert(i, NULL);
+		// print_tree(Root);
+	}*/
+
+	//ランダム順にinsert
+	arraygenerate();
+	for (int i = 0; i < SIZE; i++)
+	{
+		insert(data_array[i], NULL);
+		// print_tree(Root);
+	}
+
+	// search(昇順・降順用)
+	/*for (int i = 0; i < SIZE; i++)
+	{
+		search(i);
+	}*/
+
+	// search(ランダム順用)
+	for (int i = 0; i < SIZE; i++)
+	{
+		search(data_array[i]);
+	}
+
+	end = cur_time();
 	return 0;
 }
