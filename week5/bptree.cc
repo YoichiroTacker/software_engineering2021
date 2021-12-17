@@ -15,6 +15,8 @@ int slide_element_in_tempnode(TEMP *tnode, int key);
 void internal_split(TEMP *tnode, NODE *left);
 void insert_in_parent(NODE *left, int key, NODE *right);
 void split(int key, DATA *data, TEMP *tnode, NODE *leaf);
+NODE delete_entry(NODE *leaf, int key, DATA *data);
+void deletion(int key, DATA *data);
 void insert(int key, DATA *data);
 void init_root(void);
 int interactive();
@@ -390,6 +392,53 @@ void insert(int key, DATA *data)
 	}
 }
 
+NODE delete_entry(NODE *leaf, int key, DATA *data)
+{
+	// leaf nodeのkeyを消す
+	int i, j;
+	for (i = 0; i < N; i++)
+	{
+		if (leaf->key[i] == key)
+		{
+			break;
+		}
+	}
+
+	for (j = i; i < N; i++)
+	{
+		leaf->chi[j] = leaf->chi[j + 1];
+		leaf->key[j] = leaf->key[j + 1];
+	}
+	leaf->chi[N - 1] = 0;
+	leaf->key[N - 2] = 0;
+	leaf->nkey--;
+
+	// if (N is the root and N has only one remaining child)
+	if (leaf == Root && leaf->nkey == 0)
+	{
+		free(leaf);
+		NODE *new_leaf;
+		new_leaf = alloc_leaf(NULL);
+		new_leaf = Root;
+	}
+
+	// else if (N has too few values/pointers)
+	else if (leaf->nkey == 0)
+	{
+		NODE *newnode;
+		newnode = alloc_leaf(NULL);
+	}
+
+	return *leaf;
+}
+
+void deletion(int key, DATA *data)
+{
+	NODE *leaf;
+	leaf = find_leaf(Root, key);
+	delete_entry(leaf, key, data);
+}
+
 void init_root(void)
 {
 	Root = NULL;
@@ -407,10 +456,8 @@ int interactive()
 
 void search(int key)
 {
-	// printf("[%d]", key);
 	NODE *node;
 	node = find_leaf(Root, key);
-	// printf("{%d}", node->nkey);
 	for (int i = 0; i < node->nkey; i++)
 	{
 		if (node->key[i] == key)
@@ -443,50 +490,96 @@ int main(int argc, char *argv[])
 
 	init_root();
 
-	printf("-----Insert-----\n");
-	begin = cur_time();
+	char order = '\n';
+	cout << "[i] inputting order, [a] ascending order, [d] descending order, [r] random order:";
+	cin >> order;
 
-	//入力順にinsert
-	/*while (true)
+	//昇順にinsertする場合
+	if (order == 'a')
 	{
-		insert(interactive(), NULL);
-		print_tree(Root);
-	}*/
-
-	//昇順にinsert
-	/*for (int i = 0; i < SIZE; i++)
-	{
-		insert(i, NULL);
-		// print_tree(Root);
-	}*/
-
-	//降順にinsert
-	/*for (int i = SIZE - 1; i >= 0; i--)
-	{
-		insert(i, NULL);
-		// print_tree(Root);
-	}*/
-
-	//ランダム順にinsert
-	arraygenerate();
-	for (int i = 0; i < SIZE; i++)
-	{
-		insert(data_array[i], NULL);
-		// print_tree(Root);
+		begin = cur_time();
+		for (int i = 0; i < SIZE; i++)
+		{
+			insert(i, NULL);
+			// print_tree(Root);
+		}
+		for (int i = 0; i < SIZE; i++)
+		{
+			search(i);
+		}
+		end = cur_time();
+		cout << "no error has detected.";
 	}
 
-	// search(昇順・降順用)
-	/*for (int i = 0; i < SIZE; i++)
+	//降順にinsertする場合
+	if (order == 'd')
 	{
-		search(i);
-	}*/
-
-	// search(ランダム順用)
-	for (int i = 0; i < SIZE; i++)
-	{
-		search(data_array[i]);
+		begin = cur_time();
+		for (int i = SIZE - 1; i >= 0; i--)
+		{
+			insert(i, NULL);
+			// print_tree(Root);
+		}
+		for (int i = 0; i < SIZE; i++)
+		{
+			search(i);
+		}
+		end = cur_time();
+		cout << "no error has detected.";
 	}
 
-	end = cur_time();
+	//ランダム順にinsertする場合
+	if (order == 'r')
+	{
+		begin = cur_time();
+		arraygenerate();
+		for (int i = 0; i < SIZE; i++)
+		{
+			insert(data_array[i], NULL);
+			// print_tree(Root);
+		}
+		for (int i = 0; i < SIZE; i++)
+		{
+			search(data_array[i]);
+		}
+		end = cur_time();
+		cout << "no error has detected.";
+	}
+
+	//入力順にinsertする場合
+	if (order == 'i')
+	{
+		printf("-----Insert-----\n");
+		begin = cur_time();
+
+		char operation = '\0';
+		//入力順にinsert
+		while (true)
+		{
+			cout << "[i] insert, [s] search, [d] delete:";
+			cin >> operation;
+
+			if (operation == 'i')
+			{
+				//入力順にinsert
+				insert(interactive(), NULL);
+				print_tree(Root);
+			}
+			if (operation == 'd')
+			{
+				deletion(interactive(), NULL);
+				print_tree(Root);
+			}
+			if (operation == 's')
+			{
+				for (int i = 0; i < SIZE; i++)
+				{
+					search(i);
+				}
+			}
+		}
+
+		end = cur_time();
+	}
 	return 0;
 }
