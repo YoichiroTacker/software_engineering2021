@@ -15,8 +15,6 @@ int slide_element_in_tempnode(TEMP *tnode, int key);
 void internal_split(TEMP *tnode, NODE *left);
 void insert_in_parent(NODE *left, int key, NODE *right);
 void split(int key, DATA *data, TEMP *tnode, NODE *leaf);
-NODE delete_entry(NODE *leaf, int key, DATA *data);
-void deletion(int key, DATA *data);
 void insert(int key, DATA *data);
 void init_root(void);
 int interactive();
@@ -411,53 +409,6 @@ void *insert(void *arg)
         pthread_mutex_unlock(&mutexx);
     }
     return NULL;
-}
-
-NODE delete_entry(NODE *leaf, int key, DATA *data)
-{
-    // leaf nodeのkeyを消す
-    int i, j;
-    for (i = 0; i < N; i++)
-    {
-        if (leaf->key[i] == key)
-        {
-            break;
-        }
-    }
-
-    for (j = i; i < N; i++)
-    {
-        leaf->chi[j] = leaf->chi[j + 1];
-        leaf->key[j] = leaf->key[j + 1];
-    }
-    leaf->chi[N - 1] = 0;
-    leaf->key[N - 2] = 0;
-    leaf->nkey--;
-
-    // if (N is the root and N has only one remaining child)
-    if (leaf == Root && leaf->nkey == 0)
-    {
-        free(leaf);
-        NODE *new_leaf;
-        new_leaf = alloc_leaf(NULL);
-        new_leaf = Root;
-    }
-
-    // else if (N has too few values/pointers)
-    else if (leaf->nkey == 0)
-    {
-        NODE *newnode;
-        newnode = alloc_leaf(NULL);
-    }
-
-    return *leaf;
-}
-
-void deletion(int key, DATA *data)
-{
-    NODE *leaf;
-    leaf = find_leaf(Root, key);
-    delete_entry(leaf, key, data);
 }
 
 void init_root(void)

@@ -392,13 +392,13 @@ void insert(int key, DATA *data)
 	}
 }
 
-NODE delete_entry(NODE *leaf, int key, DATA *data)
+NODE delete_item(NODE *node, int key)
 {
-	// leaf nodeのkeyを消す
+	// nodeのkeyを消す
 	int i, j;
 	for (i = 0; i < N; i++)
 	{
-		if (leaf->key[i] == key)
+		if (node->key[i] == key)
 		{
 			break;
 		}
@@ -406,30 +406,80 @@ NODE delete_entry(NODE *leaf, int key, DATA *data)
 
 	for (j = i; i < N; i++)
 	{
-		leaf->chi[j] = leaf->chi[j + 1];
-		leaf->key[j] = leaf->key[j + 1];
+		node->chi[j] = node->chi[j + 1];
+		node->key[j] = node->key[j + 1];
 	}
-	leaf->chi[N - 1] = 0;
-	leaf->key[N - 2] = 0;
-	leaf->nkey--;
+	// node->chi[N - 1] = 0;
+	// node->key[N - 2] = 0;
+	node->nkey--;
 
-	// if (N is the root and N has only one remaining child)
-	if (leaf == Root && leaf->nkey == 0)
+	return *node;
+}
+
+NODE delete_entry(NODE *node, int key, DATA *data)
+{
+	delete_item(node, key);
+
+	NODE *parent;
+	parent = node->parent;
+
+	int kid_num;
+
+	for (int i = 0; i < parent->nkey; i++)
 	{
-		free(leaf);
-		NODE *new_leaf;
-		new_leaf = alloc_leaf(NULL);
-		new_leaf = Root;
+		if (parent->chi[i] != 0)
+		{
+			kid_num++;
+		}
 	}
 
-	// else if (N has too few values/pointers)
-	else if (leaf->nkey == 0)
+	// nodeがrootで、1つだけ子を持っている場合
+	if (node == Root && node->nkey == 1)
 	{
+		for (int i = 0; i < node->nkey; i++)
+		{
+			if (node->chi[i] != 0)
+			{
+				break;
+			}
+			// nodeの子供をrootにし、nodeを削除
+			node->chi[i] = Root;
+		}
+		free(node);
+	}
+
+	// nodeからkeyがなくなった場合
+	else if (node->nkey == 0)
+	{
+		int i, j, K;
 		NODE *newnode;
-		newnode = alloc_leaf(NULL);
+		parent = node->parent;
+
+		for (i = 0; i < parent->nkey; i++)
+		{
+			if (parent->chi[i] == node)
+			{
+				break;
+			}
+		}
+		if (i == 0)
+		{
+			newnode = parent->chi[i + 1];
+			K = parent->key[i];
+		}
+		else
+		{
+			newnode = parent->chi[i - 1];
+			K = parent->key[i - 1];
+		}
+		// nodeとnewnodeのエントリが1つのノードに収まる場合(Coalesce nodes=nodeの合体)
+		if (node->nkey + newnode->nkey <= N)
+		{
+		}
+		//収まらない場合(redistribution = newnodeからエントリを借りる)
 	}
 
-	return *leaf;
+	return *node;
 }
 
 void deletion(int key, DATA *data)
