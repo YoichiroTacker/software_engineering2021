@@ -416,22 +416,68 @@ NODE delete_item(NODE *node, int key)
 	return *node;
 }
 
+NODE set_newnode(NODE *node, int key)
+{
+	NODE *newnode;
+	NODE *parent = node->parent;
+	int newkey, i;
+	for (i = 0; i < parent->nkey; i++)
+	{
+		if (parent->chi[i] == node)
+		{
+			break;
+		}
+	}
+	if (i == 0)
+	{
+		// newnodeはnodeの右側に作る
+		newnode = parent->chi[i + 1];
+		newkey = parent->key[i];
+	}
+	else
+	{
+		// newnodeはnodeの左側に作る
+		newnode = parent->chi[i - 1];
+		newkey = parent->key[i - 1];
+	}
+	return *newnode;
+}
+
+SIBLING find_leftorrightnode(NODE *node)
+{
+	SIBLING *sibling;
+	SIBLING *parent = (SIBLING *)node->parent;
+	int i;
+	for (i = 0; i < N; i++)
+	{
+		if (parent->chi[i] == node)
+		{
+			break;
+		}
+	}
+	if (i == 0)
+	{
+		// left nodeをsiblingとして扱う
+		sibling = (SIBLING *)parent->chi[i + 1];
+		sibling->isRight = false;
+		sibling->sandwichkey = parent->key[i + 1];
+	}
+	else
+	{
+		// right nodeをsiblingとして扱う
+		sibling = (SIBLING *)parent->chi[i - 1];
+		sibling->isRight = true;
+		sibling->sandwichkey = parent->key[i - 1];
+	}
+	return *sibling;
+}
+
 NODE delete_entry(NODE *node, int key, DATA *data)
 {
 	delete_item(node, key);
 
 	NODE *parent;
 	parent = node->parent;
-
-	int kid_num;
-
-	for (int i = 0; i < parent->nkey; i++)
-	{
-		if (parent->chi[i] != 0)
-		{
-			kid_num++;
-		}
-	}
 
 	// nodeがrootで、1つだけ子を持っている場合
 	if (node == Root && node->nkey == 1)
@@ -448,37 +494,56 @@ NODE delete_entry(NODE *node, int key, DATA *data)
 		free(node);
 	}
 
-	// nodeからkeyがなくなった場合
-	else if (node->nkey == 0)
+	// nodeにあるkeyの数が1の時
+	else if (node->nkey <= (N - 1) / 2)
 	{
-		int i, j, K;
-		NODE *newnode;
-		parent = node->parent;
+		SIBLING *sibling,
+			sibling = find_leftorrightnode(node);
 
-		for (i = 0; i < parent->nkey; i++)
+		// nodeとsiblingのエントリが1つのノードに収まる場合(Coalesce nodes=nodeの合体)
+		if (node->nkey + sibling->nkey <= N)
 		{
-			if (parent->chi[i] == node)
+			if (sibling->isRight == true)
 			{
-				break;
+				//変数(N, N′) を交換する
+				// int temponum =
 			}
+			if (node->isLeaf = !true)
+			{
+				/*K′ と N のすべてのポインタと値を N′ に追加する。*/
+			}
+			else
+			{
+				for (int i = 0; i < N; i++)
+				{
+					insert_in_leaf(node, node->key[i], (DATA *)node->chi[i]);
+				}
+			}
+			delete_entry(parent, sibling->sandwichkey, (DATA *)node);
+			free(node);
 		}
-		if (i == 0)
+		//収まらない場合(redistribution = newnodeからエントリを借りる)
+		if (sibling->isRight == true)
 		{
-			newnode = parent->chi[i + 1];
-			K = parent->key[i];
+			if (node->isLeaf = !true)
+			{
+				/*N′′.Pm が N′′ の最後のポインタであるような m を N′′ から削除する (N′′.Km-1, N′′.Pm) とする。
+			Nの最初のポインタと値として(N′.Pm, K′)を挿入します。
+			他のポインタと値を右にシフトして parent(N) の K′ を N′.Km-1 で置き換える。*/
+			}
+			else
+			{
+				/*mは、(N′′.Pm, N′′.Km) がN′′の最後のポインタと値のペアであるようなものであるとします。
+			N′′ から (N′′.Pm, N′′.Km) を削除する。
+			N の最初のポインタと値として (N′.Pm, N′.Km) を挿入します。
+			他のポインタと値を右にシフトして parent(N) の K′ を N′.Km で置き換える。*/
+			}
 		}
 		else
 		{
-			newnode = parent->chi[i - 1];
-			K = parent->key[i - 1];
+			/*前のものと対照的なケース*/
 		}
-		// nodeとnewnodeのエントリが1つのノードに収まる場合(Coalesce nodes=nodeの合体)
-		if (node->nkey + newnode->nkey <= N)
-		{
-		}
-		//収まらない場合(redistribution = newnodeからエントリを借りる)
 	}
-
 	return *node;
 }
 
